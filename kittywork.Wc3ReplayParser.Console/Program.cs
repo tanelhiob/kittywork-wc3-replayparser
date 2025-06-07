@@ -9,3 +9,7 @@ if (args.Length == 0)
 var parser = new ReplayParser();
 var info = parser.Parse(args[0]);
 Console.WriteLine($"Game: {info.GameId} Version: {info.Version} Build: {info.Build} Length(ms): {info.GameLengthMs}");
+foreach (var e in info.Events)
+{
+    Console.WriteLine($"{e.TimeMs}ms Player {e.PlayerId}: {BitConverter.ToString(e.Data)}");
+}

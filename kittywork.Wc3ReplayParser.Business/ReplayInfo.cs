@@ -4,5 +4,5 @@ public record ReplayInfo(
     string GameId,
     uint Version,
     ushort Build,
-    uint GameLengthMs
-);
+    uint GameLengthMs,
+    IReadOnlyList<ReplayEvent> Events);

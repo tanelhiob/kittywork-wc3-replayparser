@@ -7,3 +7,6 @@ Run unit tests with:
 ```bash
 dotnet test kittywork.Wc3ReplayParser.sln
 ```
+
+The console application prints the replay header and lists all parsed action blocks with timestamps.
+

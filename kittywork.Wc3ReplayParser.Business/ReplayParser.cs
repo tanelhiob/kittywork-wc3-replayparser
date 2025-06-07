@@ -32,20 +32,59 @@ public class ReplayParser : IReplayParser
         string gameId = string.Empty;
         uint version = 0;
         ushort build = 0;
-        ushort flags = 0;
         uint length = 0;
-        uint crc = 0;
 
         if (headerVersion == 1)
         {
             gameId = Encoding.ASCII.GetString(reader.ReadBytes(4));
             version = reader.ReadUInt32();
             build = reader.ReadUInt16();
-            flags = reader.ReadUInt16();
+            reader.ReadUInt16(); // flags
             length = reader.ReadUInt32();
-            crc = reader.ReadUInt32();
+            reader.ReadUInt32(); // crc
         }
 
-        return new ReplayInfo(gameId, version, build, length);
+        stream.Seek(headerSize, SeekOrigin.Begin);
+        var decompressed = new MemoryStream();
+        for (int i = 0; i < blockCount; i++)
+        {
+            ushort compLen = reader.ReadUInt16();
+            ushort decompLen = reader.ReadUInt16();
+            reader.ReadUInt32(); // checksum
+            var compBytes = reader.ReadBytes(compLen);
+            using var ms = new MemoryStream(compBytes);
+            using var ds = new DeflateStream(ms, CompressionMode.Decompress);
+            ds.CopyTo(decompressed);
+        }
+        var events = new List<ReplayEvent>();
+        if (decompressed.Length > 0)
+        {
+            decompressed.Position = 0;
+            using var br = new BinaryReader(decompressed, Encoding.ASCII, leaveOpen: true);
+            if (br.BaseStream.Length >= 4)
+                br.ReadUInt32(); // skip constant
+            uint current = 0;
+            while (br.BaseStream.Position < br.BaseStream.Length)
+            {
+                byte blockId = br.ReadByte();
+                if (blockId != 0x1F && blockId != 0x1E)
+                    break;
+                ushort blockLen = br.ReadUInt16();
+                ushort timeInc = br.ReadUInt16();
+                current += timeInc;
+                int read = 0;
+                while (read < blockLen - 2)
+                {
+                    byte playerId = br.ReadByte();
+                    ushort actionLen = br.ReadUInt16();
+                    read += 3;
+                    var data = br.ReadBytes(actionLen);
+                    read += actionLen;
+                    events.Add(new ReplayEvent(current, playerId, data));
+                }
+            }
+        }
+
+        return new ReplayInfo(gameId, version, build, length, events);
     }
 }

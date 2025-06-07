@@ -31,7 +31,11 @@ public class ReplayParserTests
         var evt = info.Events[0];
         Assert.Equal(1000u, evt.TimeMs);
         Assert.Equal((byte)0, evt.PlayerId);
-        Assert.Equal(new byte[]{0x7B}, evt.Data);
+        Assert.IsType<TransferResourcesAction>(evt.Action);
+        var tr = (TransferResourcesAction)evt.Action;
+        Assert.Equal(2, tr.Slot);
+        Assert.Equal(1u, tr.Gold);
+        Assert.Equal(2u, tr.Lumber);
     }
 
     private static byte[] CreateTestReplay()
@@ -59,11 +63,17 @@ public class ReplayParserTests
         var decompressed = new List<byte>();
         decompressed.AddRange(new byte[]{0,0,0,0});
         decompressed.Add(0x1F);
-        decompressed.AddRange(BitConverter.GetBytes((ushort)6));
+        var action = new List<byte>();
+        action.Add(0x51); // action id
+        action.Add(0x02); // slot
+        action.AddRange(BitConverter.GetBytes((uint)1));
+        action.AddRange(BitConverter.GetBytes((uint)2));
+        ushort blockLen = (ushort)(2 + 3 + action.Count);
+        decompressed.AddRange(BitConverter.GetBytes(blockLen));
         decompressed.AddRange(BitConverter.GetBytes((ushort)1000));
         decompressed.Add(0x00);
-        decompressed.AddRange(BitConverter.GetBytes((ushort)1));
-        decompressed.Add(0x7B);
+        decompressed.AddRange(BitConverter.GetBytes((ushort)action.Count));
+        decompressed.AddRange(action);
         var uncompressedBytes = decompressed.ToArray();
         var compMs = new MemoryStream();
         using(var ds = new DeflateStream(compMs, CompressionLevel.Optimal, true))

@@ -3,4 +3,7 @@ namespace kittywork.Wc3ReplayParser.Business;
 public record ReplayEvent(
     uint TimeMs,
     byte PlayerId,
-    byte[] Data);
+    ReplayAction Action)
+{
+    public override string ToString() => $"{TimeMs}ms Player {PlayerId}: {Action.Explain()}";
+}

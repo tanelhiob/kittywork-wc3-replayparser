@@ -78,9 +78,12 @@ public class ReplayParser : IReplayParser
                     byte playerId = br.ReadByte();
                     ushort actionLen = br.ReadUInt16();
                     read += 3;
-                    var data = br.ReadBytes(actionLen);
+                    var dataBytes = br.ReadBytes(actionLen);
                     read += actionLen;
-                    events.Add(new ReplayEvent(current, playerId, data));
+                    using var actionMs = new MemoryStream(dataBytes);
+                    using var actionReader = new BinaryReader(actionMs);
+                    var action = ActionParser.Parse(actionReader.ReadByte(), actionReader);
+                    events.Add(new ReplayEvent(current, playerId, action));
                 }
             }
         }

@@ -1,6 +1,6 @@
 namespace kittywork.HelloWorld.Business;
 
-public class HelloService
+public class HelloService : IHelloService
 {
     public string GetMessage()
     {

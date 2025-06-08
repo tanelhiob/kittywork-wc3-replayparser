@@ -38,6 +38,21 @@ public class ReplayParserTests
         Assert.Equal(2u, tr.Lumber);
     }
 
+    [Fact]
+    public void Parse_ChatMessageBlock_ParsesMessage()
+    {
+        var data = CreateReplayWithChatBlock();
+        using var ms = new MemoryStream(data);
+        var parser = new ReplayParser();
+        var info = parser.Parse(ms);
+        Assert.Single(info.Events);
+        var evt = info.Events[0];
+        Assert.Equal((byte)0, evt.PlayerId);
+        Assert.IsType<ChatMessageAction>(evt.Action);
+        var chat = (ChatMessageAction)evt.Action;
+        Assert.Equal("hello", chat.Message);
+    }
+
     [Theory]
     [InlineData("testdata/w3c-20250511132852.w3g")]
     [InlineData("testdata/w3c-20250511135035.w3g")]
@@ -115,6 +130,53 @@ public class ReplayParserTests
         header.AddRange(BitConverter.GetBytes((ushort)1));
         header.AddRange(BitConverter.GetBytes((ushort)0x8000));
         header.AddRange(BitConverter.GetBytes((uint)1000));
+        header.AddRange(BitConverter.GetBytes((uint)0));
+        header.AddRange(block);
+        return header.ToArray();
+    }
+
+    private static byte[] CreateReplayWithChatBlock()
+    {
+        var decompressed = new List<byte>();
+        decompressed.AddRange(new byte[] { 0, 0, 0, 0 });
+        decompressed.Add(0x20); // chat block
+        byte playerId = 0;
+        string msg = "hello";
+        byte flags = 0;
+        ushort byteCount = (ushort)(1 + msg.Length + 1);
+        decompressed.Add(playerId);
+        decompressed.AddRange(BitConverter.GetBytes(byteCount));
+        decompressed.Add(flags);
+        decompressed.AddRange(Encoding.UTF8.GetBytes(msg));
+        decompressed.Add(0x00);
+
+        var uncompressedBytes = decompressed.ToArray();
+        var compMs = new MemoryStream();
+        using (var ds = new ZLibStream(compMs, CompressionLevel.Optimal, leaveOpen: true))
+            ds.Write(uncompressedBytes, 0, uncompressedBytes.Length);
+        compMs.Position = 0;
+        var compBytes = compMs.ToArray();
+
+        var block = new List<byte>();
+        block.AddRange(BitConverter.GetBytes((uint)compBytes.Length));
+        block.AddRange(BitConverter.GetBytes((uint)uncompressedBytes.Length));
+        block.AddRange(new byte[4]);
+        block.AddRange(compBytes);
+
+        var header = new List<byte>();
+        header.AddRange(Encoding.ASCII.GetBytes("Warcraft III recorded game"));
+        header.Add(0x1A);
+        header.Add(0x00);
+        header.AddRange(BitConverter.GetBytes((uint)0x44));
+        header.AddRange(BitConverter.GetBytes((uint)block.Count));
+        header.AddRange(BitConverter.GetBytes((uint)1));
+        header.AddRange(BitConverter.GetBytes((uint)uncompressedBytes.Length));
+        header.AddRange(BitConverter.GetBytes((uint)1));
+        header.AddRange(Encoding.ASCII.GetBytes("W3XP"));
+        header.AddRange(BitConverter.GetBytes((uint)0x00010000));
+        header.AddRange(BitConverter.GetBytes((ushort)1));
+        header.AddRange(BitConverter.GetBytes((ushort)0x8000));
+        header.AddRange(BitConverter.GetBytes((uint)0));
         header.AddRange(BitConverter.GetBytes((uint)0));
         header.AddRange(block);
         return header.ToArray();

@@ -38,6 +38,22 @@ public class ReplayParserTests
         Assert.Equal(2u, tr.Lumber);
     }
 
+    [Theory]
+    [InlineData("testdata/w3c-20250511132852.w3g")]
+    [InlineData("testdata/w3c-20250511135035.w3g")]
+    [InlineData("testdata/w3c-20250511135332.w3g")]
+    [InlineData("testdata/w3c-20250511141650.w3g")]
+    [InlineData("testdata/w3c-20250511145524.w3g")]
+    [InlineData("testdata/w3c-20250511151824.w3g")]
+    public void Parse_RealReplays_Success(string path)
+    {
+        var fullPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../..", path));
+        var parser = new ReplayParser();
+        var info = parser.Parse(fullPath);
+        Assert.False(string.IsNullOrEmpty(info.GameId));
+        Assert.NotNull(info.Events);
+    }
+
     private static byte[] CreateTestReplay()
     {
         var buffer = new List<byte>();
@@ -76,13 +92,13 @@ public class ReplayParserTests
         decompressed.AddRange(action);
         var uncompressedBytes = decompressed.ToArray();
         var compMs = new MemoryStream();
-        using(var ds = new DeflateStream(compMs, CompressionLevel.Optimal, true))
+        using(var ds = new ZLibStream(compMs, CompressionLevel.Optimal, leaveOpen: true))
             ds.Write(uncompressedBytes,0,uncompressedBytes.Length);
         compMs.Position = 0;
         var compBytes = compMs.ToArray();
         var block = new List<byte>();
-        block.AddRange(BitConverter.GetBytes((ushort)compBytes.Length));
-        block.AddRange(BitConverter.GetBytes((ushort)uncompressedBytes.Length));
+        block.AddRange(BitConverter.GetBytes((uint)compBytes.Length));
+        block.AddRange(BitConverter.GetBytes((uint)uncompressedBytes.Length));
         block.AddRange(new byte[4]);
         block.AddRange(compBytes);
         var header = new List<byte>();

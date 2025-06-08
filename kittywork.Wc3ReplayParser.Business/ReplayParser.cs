@@ -48,12 +48,13 @@ public class ReplayParser : IReplayParser
         var decompressed = new MemoryStream();
         for (int i = 0; i < blockCount; i++)
         {
-            ushort compLen = reader.ReadUInt16();
-            ushort decompLen = reader.ReadUInt16();
+            // W3Champions replay format uses 32-bit lengths
+            uint compLen = reader.ReadUInt32();
+            uint decompLen = reader.ReadUInt32();
             reader.ReadUInt32(); // checksum
-            var compBytes = reader.ReadBytes(compLen);
+            var compBytes = reader.ReadBytes((int)compLen);
             using var ms = new MemoryStream(compBytes);
-            using var ds = new DeflateStream(ms, CompressionMode.Decompress);
+            using var ds = new ZLibStream(ms, CompressionMode.Decompress);
             ds.CopyTo(decompressed);
         }
         var events = new List<ReplayEvent>();

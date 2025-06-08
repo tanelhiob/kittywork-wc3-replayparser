@@ -68,29 +68,76 @@ public class ReplayParser : IReplayParser
             while (br.BaseStream.Position < br.BaseStream.Length)
             {
                 byte blockId = br.ReadByte();
-                if (blockId != 0x1F && blockId != 0x1E)
-                    continue; // skip unknown data until an action block marker
-                if (br.BaseStream.Position + 4 > br.BaseStream.Length)
-                    break;
-                ushort blockLen = br.ReadUInt16();
-                ushort timeInc = br.ReadUInt16();
-                current += timeInc;
-                int read = 0;
-                while (read < blockLen - 2)
+                switch (blockId)
                 {
-                    byte playerId = br.ReadByte();
-                    ushort actionLen = br.ReadUInt16();
-                    read += 3;
-                    var dataBytes = br.ReadBytes(actionLen);
-                    read += actionLen;
-                    using var actionMs = new MemoryStream(dataBytes);
-                    using var actionReader = new BinaryReader(actionMs);
-                    var action = ActionParser.Parse(actionReader.ReadByte(), actionReader);
-                    events.Add(new ReplayEvent(current, playerId, action));
+                    case 0x1F:
+                    case 0x1E:
+                        if (br.BaseStream.Position + 4 > br.BaseStream.Length)
+                            return new ReplayInfo(gameId, version, build, length, events);
+                        ushort blockLen = br.ReadUInt16();
+                        ushort timeInc = br.ReadUInt16();
+                        current += timeInc;
+                        int read = 0;
+                        while (read < blockLen - 2)
+                        {
+                            byte playerId = br.ReadByte();
+                            ushort actionLen = br.ReadUInt16();
+                            read += 3;
+                            var dataBytes = br.ReadBytes(actionLen);
+                            read += actionLen;
+                            using var actionMs = new MemoryStream(dataBytes);
+                            using var actionReader = new BinaryReader(actionMs);
+                            var action = ActionParser.Parse(actionReader.ReadByte(), actionReader);
+                            events.Add(new ReplayEvent(current, playerId, action));
+                        }
+                        break;
+                    case 0x20:
+                        byte player = br.ReadByte();
+                        ushort byteCount = br.ReadUInt16();
+                        byte flags = br.ReadByte();
+                        uint mode = 0;
+                        if (flags == 0x20)
+                            mode = br.ReadUInt32();
+                        string msg = ReadZeroTerminatedString(br);
+                        events.Add(new ReplayEvent(current, player, new ChatMessageAction(mode, 0, msg)));
+                        break;
+                    case 0x17:
+                        br.ReadBytes(4); // reason
+                        br.ReadByte();    // playerId
+                        br.ReadBytes(4);  // result
+                        br.ReadUInt32();
+                        break;
+                    case 0x1A:
+                    case 0x1B:
+                    case 0x1C:
+                        br.ReadUInt32();
+                        break;
+                    case 0x22:
+                        byte len = br.ReadByte();
+                        br.ReadBytes(len);
+                        break;
+                    case 0x23:
+                        br.ReadBytes(10);
+                        break;
+                    case 0x2F:
+                        br.ReadBytes(8);
+                        break;
+                    default:
+                        // skip unknown block id; format not handled
+                        break;
                 }
             }
         }
 
         return new ReplayInfo(gameId, version, build, length, events);
+    }
+
+    private static string ReadZeroTerminatedString(BinaryReader br)
+    {
+        List<byte> bytes = new();
+        byte b;
+        while ((b = br.ReadByte()) != 0)
+            bytes.Add(b);
+        return Encoding.UTF8.GetString(bytes.ToArray());
     }
 }

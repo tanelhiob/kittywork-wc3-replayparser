@@ -107,6 +107,21 @@ public record CommandFrameAction(uint EventId, float Val, string Text) : ReplayA
     public override string Explain() => $"CommandFrame event {EventId} val={Val} text={Text}";
 }
 
+public record ChatMessageAction(uint UnknownA, uint UnknownB, string Message) : ReplayAction(0x60)
+{
+    public override string Explain() => $"Chat message '{Message}'";
+}
+
+public record MinimapPingAction(uint X, uint Y, uint Flags) : ReplayAction(0x62)
+{
+    public override string Explain() => $"Minimap ping at ({X},{Y}) flags=0x{Flags:X}";
+}
+
+public record MmdMessageAction(string Tag, string Value, string Text, uint Data) : ReplayAction(0x6B)
+{
+    public override string Explain() => $"MMD {Tag} {Value} {Text} data={Data}";
+}
+
 public record NetTag(uint A, uint B)
 {
     public override string ToString() => $"[{A:X8},{B:X8}]";

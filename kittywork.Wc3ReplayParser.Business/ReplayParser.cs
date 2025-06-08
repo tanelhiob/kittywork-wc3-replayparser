@@ -69,6 +69,8 @@ public class ReplayParser : IReplayParser
             {
                 byte blockId = br.ReadByte();
                 if (blockId != 0x1F && blockId != 0x1E)
+                    continue; // skip unknown data until an action block marker
+                if (br.BaseStream.Position + 4 > br.BaseStream.Length)
                     break;
                 ushort blockLen = br.ReadUInt16();
                 ushort timeInc = br.ReadUInt16();

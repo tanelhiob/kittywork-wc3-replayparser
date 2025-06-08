@@ -1,3 +1,5 @@
+using System;
+
 namespace kittywork.Wc3ReplayParser.Business;
 
 public record ReplayEvent(
@@ -5,5 +7,10 @@ public record ReplayEvent(
     byte PlayerId,
     ReplayAction Action)
 {
-    public override string ToString() => $"{TimeMs}ms Player {PlayerId}: {Action.Explain()}";
+    public override string ToString()
+    {
+        var ts = TimeSpan.FromMilliseconds(TimeMs);
+        var timeText = ts.ToString(@"hh\:mm\:ss\.fff");
+        return $"{timeText} Player {PlayerId}: {Action.Explain()}";
+    }
 }

@@ -74,6 +74,16 @@ internal static class ActionParser
                 uint gold = br.ReadUInt32();
                 uint lumber = br.ReadUInt32();
                 return new TransferResourcesAction(slot, gold, lumber);
+            case 0x60:
+                uint a = br.ReadUInt32();
+                uint b = br.ReadUInt32();
+                string msg = ReadString(br);
+                return new ChatMessageAction(a, b, msg);
+            case 0x62:
+                uint x32 = br.ReadUInt32();
+                uint y32 = br.ReadUInt32();
+                uint pingFlags = br.ReadUInt32();
+                return new MinimapPingAction(x32, y32, pingFlags);
             case 0x75:
                 byte arrow = br.ReadByte();
                 return new ArrowKeyAction(arrow);
@@ -100,6 +110,12 @@ internal static class ActionParser
                 float val = br.ReadSingle();
                 string text = ReadString(br);
                 return new CommandFrameAction(eventId32, val, text);
+            case 0x6B:
+                string tag = ReadString(br);
+                string value2 = ReadString(br);
+                string text2 = ReadString(br);
+                uint data2 = br.ReadUInt32();
+                return new MmdMessageAction(tag, value2, text2, data2);
             default:
                 var remaining = br.ReadBytes((int)(br.BaseStream.Length - br.BaseStream.Position));
                 return new UnknownAction(id, remaining);

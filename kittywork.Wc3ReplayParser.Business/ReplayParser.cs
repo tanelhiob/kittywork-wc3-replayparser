@@ -85,9 +85,12 @@ public class ReplayParser : IReplayParser
                             read += 3;
                             var dataBytes = br.ReadBytes(actionLen);
                             read += actionLen;
-                            using var actionMs = new MemoryStream(dataBytes);
-                            using var actionReader = new BinaryReader(actionMs);
-                            var action = ActionParser.Parse(actionReader.ReadByte(), actionReader);
+                            ReadOnlySpan<byte> span = dataBytes;
+                            if (!ReplayActionParserExtensions.TryParseAction(ref span, out var action) || !span.IsEmpty)
+                            {
+                                byte id = dataBytes.Length > 0 ? dataBytes[0] : (byte)0;
+                                action = new UnknownAction(id, dataBytes.AsSpan(1).ToArray());
+                            }
                             events.Add(new ReplayEvent(current, playerId, action));
                         }
                         break;
